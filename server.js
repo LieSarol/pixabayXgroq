@@ -2,31 +2,31 @@ import express from "express";
 import axios from "axios";
 import chalk from "chalk";
 import figlet from "figlet";
-import * as dotenv from "dotenv";
-
+import dotenv from "dotenv";
 dotenv.config();
+
 const app = express();
 const PORT = 3000;
 
 // 💅 Logging with extra drip
-const logTitle = (title: string) => {
+const logTitle = (title) => {
   console.log(chalk.cyan(figlet.textSync(title)));
 };
 
-const logInfo = (msg: string) => {
+const logInfo = (msg) => {
   console.log(chalk.green("[INFO]"), msg);
 };
 
-const logError = (msg: string) => {
+const logError = (msg) => {
   console.error(chalk.red("[ERROR]"), msg);
 };
 
-const logData = (msg: string, data: any) => {
+const logData = (msg, data) => {
   console.log(chalk.yellow(`[DATA] ${msg}:`), data);
 };
 
 // 🤖 GROQ API
-const getGroqResponse = async (prompt: string) => {
+const getGroqResponse = async (prompt) => {
   try {
     const res = await axios.post(
       "https://api.groq.com/openai/v1/chat/completions",
@@ -50,7 +50,7 @@ const getGroqResponse = async (prompt: string) => {
 };
 
 // 🎨 PIXABAY API
-const getPixabayImages = async (query: string) => {
+const getPixabayImages = async (query) => {
   try {
     const res = await axios.get(
       `https://pixabay.com/api/?key=${process.env.PIXABAY_API_KEY}&q=${encodeURIComponent(
@@ -58,7 +58,7 @@ const getPixabayImages = async (query: string) => {
       )}&image_type=photo`
     );
     logInfo("Pixabay dropped the pixels.");
-    return res.data.hits.map((hit: any) => hit.webformatURL);
+    return res.data.hits.map((hit) => hit.webformatURL);
   } catch (err) {
     logError("Pixabay said nuh uh.");
     throw err;
@@ -69,7 +69,7 @@ const getPixabayImages = async (query: string) => {
 logTitle("SPICY NODE SERVER");
 
 app.get("/", async (req, res) => {
-  const prompt = req.query.prompt as string;
+  const prompt = req.query.prompt;
 
   if (!prompt) {
     return res.status(400).json({ error: "Missing ?prompt= parameter" });
@@ -84,17 +84,17 @@ app.get("/", async (req, res) => {
     logData("AI said", aiResponse);
     logData("Image results (top 3)", imageResults.slice(0, 3));
 
-    return res.json({
+    res.json({
       prompt,
       aiResponse,
       images: imageResults.slice(0, 5),
     });
   } catch (err) {
     logError("Oops! Something exploded internally 💥");
-    return res.status(500).json({ error: "Internal server error" });
+    res.status(500).json({ error: "Internal server error" });
   }
 });
 
 app.listen(PORT, () => {
-  logInfo(`Server is running on http://localhost:${PORT}`);
+  logInfo(`Server is vibin' on http://localhost:${PORT}`);
 });
