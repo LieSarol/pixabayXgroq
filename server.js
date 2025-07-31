@@ -1,9 +1,12 @@
-import { serve } from "bun";
+import express from "express";
 import axios from "axios";
 import chalk from "chalk";
 import figlet from "figlet";
 import * as dotenv from "dotenv";
+
 dotenv.config();
+const app = express();
+const PORT = 3000;
 
 // 💅 Logging with extra drip
 const logTitle = (title: string) => {
@@ -63,40 +66,35 @@ const getPixabayImages = async (query: string) => {
 };
 
 // 🧨 Let’s GO
-logTitle("SPICY BUN SERVER");
+logTitle("SPICY NODE SERVER");
 
-serve({
-  port: 3000,
-  fetch: async (req) => {
-    const url = new URL(req.url);
-    const prompt = url.searchParams.get("prompt");
+app.get("/", async (req, res) => {
+  const prompt = req.query.prompt as string;
 
-    if (!prompt) {
-      return new Response(
-        JSON.stringify({ error: "Missing ?prompt= parameter" }),
-        { status: 400 }
-      );
-    }
+  if (!prompt) {
+    return res.status(400).json({ error: "Missing ?prompt= parameter" });
+  }
 
-    logInfo(`User prompt: "${prompt}"`);
+  logInfo(`User prompt: "${prompt}"`);
 
-    try {
-      const aiResponse = await getGroqResponse(prompt);
-      const imageResults = await getPixabayImages(prompt);
+  try {
+    const aiResponse = await getGroqResponse(prompt);
+    const imageResults = await getPixabayImages(prompt);
 
-      logData("AI said", aiResponse);
-      logData("Image results (top 3)", imageResults.slice(0, 3));
+    logData("AI said", aiResponse);
+    logData("Image results (top 3)", imageResults.slice(0, 3));
 
-      return Response.json({
-        prompt,
-        aiResponse,
-        images: imageResults.slice(0, 5),
-      });
-    } catch (err) {
-      logError("Oops! Something exploded internally 💥");
-      return new Response(JSON.stringify({ error: "Internal server error" }), {
-        status: 500,
-      });
-    }
-  },
+    return res.json({
+      prompt,
+      aiResponse,
+      images: imageResults.slice(0, 5),
+    });
+  } catch (err) {
+    logError("Oops! Something exploded internally 💥");
+    return res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+app.listen(PORT, () => {
+  logInfo(`Server is running on http://localhost:${PORT}`);
 });
