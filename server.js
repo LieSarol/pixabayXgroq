@@ -4,6 +4,7 @@ import axios from "axios";
 import chalk from "chalk";
 import figlet from "figlet";
 import { URL } from "url";
+import { buildClient } from "@xata.io/client";
 
 config(); // Load .env
 
@@ -23,6 +24,11 @@ const logError = (msg) => {
 const logData = (msg, data) => {
   console.log(chalk.yellow(`[DATA] ${msg}:`), data);
 };
+
+// 💾 Xata Setup (IN SERVER FILE, just for you 💪)
+const xata = buildClient({
+  databaseURL: process.env.XATA_DB_URL,
+});
 
 // CORS headers 🎉
 const setCORS = (res) => {
@@ -52,13 +58,10 @@ const getGroqResponse = async (prompt) => {
   } catch (err) {
     logError("Groq API said nope.");
     if (err.response) {
-      // Server responded with a status code out of the 2xx range
       console.error(chalk.red("[GROQ ERROR RESPONSE]"), err.response.data);
     } else if (err.request) {
-      // Request was made but no response received
       console.error(chalk.red("[GROQ NO RESPONSE]"), err.request);
     } else {
-      // Something else went wrong
       console.error(chalk.red("[GROQ CONFIG ERROR]"), err.message);
     }
     throw err;
@@ -107,36 +110,79 @@ const handleImage = async (res, prompt) => {
   }
 };
 
+// 💾 /insert endpoint
+const handleInsert = async (req, res) => {
+  try {
+    let body = "";
+
+    req.on("data", (chunk) => {
+      body += chunk.toString();
+    });
+
+    req.on("end", async () => {
+      const { title, keywords, meta_tags, scheme, content } = JSON.parse(body);
+
+      if (!title || !keywords || !meta_tags || !scheme || !content) {
+        res.writeHead(400, { "Content-Type": "application/json" });
+        return res.end(JSON.stringify({ error: "Missing one or more fields" }));
+      }
+
+      const record = await xata.db.Content.create({
+        title,
+        keywords,
+        meta_tags,
+        scheme,
+        content,
+      });
+
+      logData("Inserted to Xata", record);
+
+      res.writeHead(200, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ success: true, record }));
+    });
+  } catch (err) {
+    logError("Xata insert failed");
+    console.error(err);
+    res.writeHead(500, { "Content-Type": "application/json" });
+    res.end(JSON.stringify({ error: "Insert failed" }));
+  }
+};
+
 // 🧨 Start server
 logTitle("COOL SERVER");
 
 const server = http.createServer(async (req, res) => {
-  setCORS(res); // Always add CORS
+  setCORS(res);
 
   const parsedUrl = new URL(req.url, `http://${req.headers.host}`);
   const path = parsedUrl.pathname;
   const prompt = parsedUrl.searchParams.get("prompt");
 
-  // Handle preflight CORS check (OPTIONS)
   if (req.method === "OPTIONS") {
     res.writeHead(204);
     return res.end();
   }
 
-  if (!prompt) {
-    res.writeHead(400, { "Content-Type": "application/json" });
-    res.end(JSON.stringify({ error: "Missing ?prompt= parameter" }));
-    return;
+  if (req.method === "GET") {
+    if (!prompt) {
+      res.writeHead(400, { "Content-Type": "application/json" });
+      return res.end(JSON.stringify({ error: "Missing ?prompt= parameter" }));
+    }
+
+    if (path === "/ai") {
+      logInfo(`Calling /ai with prompt: "${prompt}"`);
+      return handleAI(res, prompt);
+    }
+
+    if (path === "/image") {
+      logInfo(`Calling /image with prompt: "${prompt}"`);
+      return handleImage(res, prompt);
+    }
   }
 
-  if (path === "/ai") {
-    logInfo(`Calling /ai with prompt: "${prompt}"`);
-    return handleAI(res, prompt);
-  }
-
-  if (path === "/image") {
-    logInfo(`Calling /image with prompt: "${prompt}"`);
-    return handleImage(res, prompt);
+  if (req.method === "POST" && path === "/insert") {
+    logInfo(`Received POST to /insert`);
+    return handleInsert(req, res);
   }
 
   res.writeHead(404, { "Content-Type": "application/json" });
