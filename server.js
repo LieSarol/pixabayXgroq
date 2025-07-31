@@ -51,6 +51,16 @@ const getGroqResponse = async (prompt) => {
     return content;
   } catch (err) {
     logError("Groq API said nope.");
+    if (err.response) {
+      // Server responded with a status code out of the 2xx range
+      console.error(chalk.red("[GROQ ERROR RESPONSE]"), err.response.data);
+    } else if (err.request) {
+      // Request was made but no response received
+      console.error(chalk.red("[GROQ NO RESPONSE]"), err.request);
+    } else {
+      // Something else went wrong
+      console.error(chalk.red("[GROQ CONFIG ERROR]"), err.message);
+    }
     throw err;
   }
 };
