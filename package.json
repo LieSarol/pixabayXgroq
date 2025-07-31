@@ -1,13 +1,17 @@
 {
-  "name": "cool-server",
+  "name": "liemar-server",
   "version": "1.0.0",
-  "description": "A Node.js server that talks to Groq AI and fetches images from Pixabay.",
+  "description": "The all-in-one Gen Z-powered server with Groq, Pixabay, and Xata magic.",
   "main": "server.js",
   "type": "module",
   "scripts": {
     "start": "node server.js"
   },
+  "keywords": [],
+  "author": "Liemar",
+  "license": "MIT",
   "dependencies": {
+    "@xata.io/client": "^1.0.0",
     "axios": "^1.6.8",
     "chalk": "^5.3.0",
     "dotenv": "^16.3.1",
