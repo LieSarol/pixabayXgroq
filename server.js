@@ -1,12 +1,11 @@
-import express from "express";
+import http from "http";
+import { config } from "dotenv";
 import axios from "axios";
 import chalk from "chalk";
 import figlet from "figlet";
-import dotenv from "dotenv";
-dotenv.config();
+import { URL } from "url";
 
-const app = express();
-const PORT = 3000;
+config(); // Load .env
 
 // 💅 Logging with extra drip
 const logTitle = (title) => {
@@ -23,6 +22,13 @@ const logError = (msg) => {
 
 const logData = (msg, data) => {
   console.log(chalk.yellow(`[DATA] ${msg}:`), data);
+};
+
+// CORS headers 🎉
+const setCORS = (res) => {
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
 };
 
 // 🤖 GROQ API
@@ -65,36 +71,69 @@ const getPixabayImages = async (query) => {
   }
 };
 
-// 🧨 Let’s GO
-logTitle("SPICY NODE SERVER");
-
-app.get("/", async (req, res) => {
-  const prompt = req.query.prompt;
-
-  if (!prompt) {
-    return res.status(400).json({ error: "Missing ?prompt= parameter" });
-  }
-
-  logInfo(`User prompt: "${prompt}"`);
-
+// 🧠 /ai endpoint
+const handleAI = async (res, prompt) => {
   try {
     const aiResponse = await getGroqResponse(prompt);
-    const imageResults = await getPixabayImages(prompt);
-
     logData("AI said", aiResponse);
-    logData("Image results (top 3)", imageResults.slice(0, 3));
-
-    res.json({
-      prompt,
-      aiResponse,
-      images: imageResults.slice(0, 5),
-    });
+    res.writeHead(200, { "Content-Type": "application/json" });
+    res.end(JSON.stringify({ prompt, aiResponse }));
   } catch (err) {
-    logError("Oops! Something exploded internally 💥");
-    res.status(500).json({ error: "Internal server error" });
+    res.writeHead(500, { "Content-Type": "application/json" });
+    res.end(JSON.stringify({ error: "AI fetch failed" }));
   }
+};
+
+// 📸 /image endpoint
+const handleImage = async (res, prompt) => {
+  try {
+    const imageResults = await getPixabayImages(prompt);
+    logData("Image results (top 3)", imageResults.slice(0, 3));
+    res.writeHead(200, { "Content-Type": "application/json" });
+    res.end(JSON.stringify({ prompt, images: imageResults.slice(0, 5) }));
+  } catch (err) {
+    res.writeHead(500, { "Content-Type": "application/json" });
+    res.end(JSON.stringify({ error: "Image fetch failed" }));
+  }
+};
+
+// 🧨 Start server
+logTitle("COOL SERVER");
+
+const server = http.createServer(async (req, res) => {
+  setCORS(res); // Always add CORS
+
+  const parsedUrl = new URL(req.url, `http://${req.headers.host}`);
+  const path = parsedUrl.pathname;
+  const prompt = parsedUrl.searchParams.get("prompt");
+
+  // Handle preflight CORS check (OPTIONS)
+  if (req.method === "OPTIONS") {
+    res.writeHead(204);
+    return res.end();
+  }
+
+  if (!prompt) {
+    res.writeHead(400, { "Content-Type": "application/json" });
+    res.end(JSON.stringify({ error: "Missing ?prompt= parameter" }));
+    return;
+  }
+
+  if (path === "/ai") {
+    logInfo(`Calling /ai with prompt: "${prompt}"`);
+    return handleAI(res, prompt);
+  }
+
+  if (path === "/image") {
+    logInfo(`Calling /image with prompt: "${prompt}"`);
+    return handleImage(res, prompt);
+  }
+
+  res.writeHead(404, { "Content-Type": "application/json" });
+  res.end(JSON.stringify({ error: "Unknown endpoint" }));
 });
 
-app.listen(PORT, () => {
-  logInfo(`Server is vibin' on http://localhost:${PORT}`);
+const PORT = process.env.PORT || 3000;
+server.listen(PORT, () => {
+  logInfo(`Server listening on http://localhost:${PORT}`);
 });
