@@ -127,7 +127,7 @@ const handleInsert = async (req, res) => {
         return res.end(JSON.stringify({ error: "Missing one or more fields" }));
       }
 
-      const record = await xata.db.Content.create({
+      const record = await xata.db.seo.create({
         title,
         keywords,
         meta_tags,
