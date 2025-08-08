@@ -120,18 +120,18 @@ const handleInsert = async (req, res) => {
     });
 
     req.on("end", async () => {
-      const { title, keywords, meta_tags, scheme, content } = JSON.parse(body);
+      const { title, description, content } = JSON.parse(body);
 
-      if (!title || !keywords || !meta_tags || !scheme || !content) {
+      // Validate only title, description, and content
+      if (!title || !description || !content) {
         res.writeHead(400, { "Content-Type": "application/json" });
-        return res.end(JSON.stringify({ error: "Missing one or more fields" }));
+        return res.end(JSON.stringify({ error: "Missing one or more fields: title, description, content" }));
       }
 
+      // Insert only these three fields into Xata
       const record = await xata.db.seo.create({
         title,
-        keywords,
-        meta_tags,
-        scheme,
+        description,
         content,
       });
 
