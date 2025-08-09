@@ -129,7 +129,7 @@ const handleInsert = async (req, res) => {
       }
 
       // Insert only these three fields into Xata
-      const record = await xata.db.seo.create({
+      const record = await xata.seo.create({
         title,
         description,
         content,
