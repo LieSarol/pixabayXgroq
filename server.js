@@ -90,7 +90,7 @@ const handleAI = async (res, prompt) => {
     const aiResponse = await getGroqResponse(prompt);
     logData("AI said", aiResponse);
     res.writeHead(200, { "Content-Type": "application/json" });
-    res.end(JSON.stringify({ prompt, aiResponse }));
+    res.end(JSON.stringify({ aiResponse }));
   } catch (err) {
     res.writeHead(500, { "Content-Type": "application/json" });
     res.end(JSON.stringify({ error: "AI fetch failed" }));
