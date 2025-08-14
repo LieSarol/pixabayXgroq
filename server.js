@@ -59,14 +59,16 @@ const handleAI = async (res, prompt) => {
 };
 
 //  Unsplash API magic
-const getUnsplashImages = async (query) => {
+const getUnsplashRandomImage = async (query) => {
   try {
-    const res = await axios.get("https://api.unsplash.com/search/photos", {
-      params: { query, per_page: 10 },
+    const res = await axios.get("https://api.unsplash.com/photos/random", {
+      params: { query, count: 5 }, // how many random images you want
       headers: { Authorization: `Client-ID ${process.env.UNSPLASH_ACCESS_KEY}` },
     });
-    logInfo("Unsplash sent some slick snaps.");
-    return res.data.results.map((img) => img.urls.regular);
+    logInfo("Unsplash delivered some spicy random shots.");
+    
+    // API returns an array when count > 1
+    return res.data.map((img) => img.urls.regular);
   } catch (err) {
     logError("Unsplash API said nuh uh.");
     if (err.response) console.error(chalk.red("[UNSPLASH ERROR]"), err.response.data);
@@ -76,10 +78,10 @@ const getUnsplashImages = async (query) => {
 
 const handleImage = async (res, prompt) => {
   try {
-    const imageResults = await getUnsplashImages(prompt);
-    logData("Image results (top 5)", imageResults.slice(0, 5));
+    const imageResults = await getUnsplashRandomImage(prompt);
+    logData("Random image results", imageResults);
     res.writeHead(200, { "Content-Type": "application/json" });
-    res.end(JSON.stringify({ prompt, images: imageResults.slice(0, 5) }));
+    res.end(JSON.stringify({ prompt, images: imageResults }));
   } catch {
     res.writeHead(500, { "Content-Type": "application/json" });
     res.end(JSON.stringify({ error: "Image fetch failed" }));
